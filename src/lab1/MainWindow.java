@@ -3,7 +3,12 @@ package lab1;
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.function.Predicate;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class MainWindow extends JFrame {
     private final JTextArea sourceCodeTextBox;
@@ -183,31 +188,52 @@ public class MainWindow extends JFrame {
             }
 
             boolean hasLeadingSpace = raw.length() > 0 && Character.isWhitespace(raw.charAt(0));
-            String[] parts = line.split("\\s+", 4);
+            String[] parts = new String[4];
+            Arrays.fill(parts, "");
 
-            if (hasLeadingSpace) {
-                sourceCode[i][0] = "";
-                for (int j = 0; j < parts.length; j++) {
-                    if (parts[j].startsWith("C\"") && parts[j].endsWith("\"")) {
-                        sourceCode[i][j + 1] = parts[j];
+            int idx = 0;  // индекс для записи в parts
+            int pos = 0;  // текущая позиция в строке
+
+            while (pos < line.length() && idx < 4) {
+                // Пропускаем пробелы
+                while (pos < line.length() && Character.isWhitespace(line.charAt(pos))) pos++;
+                if (pos >= line.length()) break;
+
+                // Если встретили C" или X"
+                if (pos + 1 < line.length() && (line.charAt(pos) == 'C' || line.charAt(pos) == 'X') && line.charAt(pos + 1) == '"') {
+                    int firstQuote = pos + 1;
+                    int lastQuote = line.lastIndexOf('"');
+                    if (lastQuote == -1 || lastQuote <= firstQuote) {
+                        // Закрывающей кавычки нет — читаем до конца
+                        parts[idx++] = line.substring(pos).toUpperCase();
+                        pos = line.length();
                     } else {
-                        sourceCode[i][j + 1] = parts[j].toUpperCase();
+                        // Берём всю строку от первой до последней кавычки
+                        parts[idx++] = line.substring(pos, lastQuote + 1).toUpperCase();
+                        pos = lastQuote + 1;
                     }
-                }
-                for (int j = parts.length + 1; j < 4; j++) sourceCode[i][j] = "";
-            } else {
-                for (int j = 0; j < 4; j++) {
-                    if (j < parts.length) {
-                        if (parts[j].startsWith("C\"") && parts[j].endsWith("\"")) {
-                            sourceCode[i][j] = parts[j]; // сохраняем регистр
-                        } else {
-                            sourceCode[i][j] = parts[j].toUpperCase();
-                        }
-                    } else sourceCode[i][j] = "";
+                } else {
+                    // обычный токен до следующего пробела
+                    int start = pos;
+                    while (pos < line.length() && !Character.isWhitespace(line.charAt(pos))) pos++;
+                    parts[idx++] = line.substring(start, pos).toUpperCase();
                 }
             }
+
+            // если первая колонка — пробел в начале строки
+            if (hasLeadingSpace) {
+                sourceCode[i][0] = "";
+                for (int j = 0; j < 3; j++) {
+                    sourceCode[i][j + 1] = parts[j] != null ? parts[j] : "";
+                }
+            } else {
+                for (int j = 0; j < 4; j++) {
+                    sourceCode[i][j] = parts[j] != null ? parts[j] : "";
+                }
+            }
+
             System.out.printf(
-                    "%2d | %-20s | mark='%s', OC='%s', OP1='%s', OP2='%s'%n",
+                    "%2d | %-50s | mark='%s', OC='%s', OP1='%s', OP2='%s'%n",
                     (i + 1),
                     raw,
                     sourceCode[i][0],
@@ -220,6 +246,33 @@ public class MainWindow extends JFrame {
         System.out.println("=== Конец разбора ===\n");
         return sourceCode;
     }
+
+
+
+    /** делает токен верхним регистром, кроме строковых C"/X" констант */
+    private String normalizeToken(String token) {
+        if (token == null) return "";
+        if (token.length() >= 3 &&
+                (token.charAt(0) == 'C' || token.charAt(0) == 'c' || token.charAt(0) == 'X' || token.charAt(0) == 'x') &&
+                token.charAt(1) == '"' && token.charAt(token.length() - 1) == '"') {
+            // только префикс в верхний регистр, содержимое не трогаем
+            char prefix = Character.toUpperCase(token.charAt(0));
+            return prefix + token.substring(1);
+        }
+        return token.toUpperCase();
+    }
+
+    /** объединяет оставшиеся токены в один */
+    private String mergeTokens(List<String> tokens, int start) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = start; i < tokens.size(); i++) {
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(tokens.get(i));
+        }
+        return sb.toString();
+    }
+
+
 
     private void performSecondPass() {
         secondPassErrorTextBox.setText("");

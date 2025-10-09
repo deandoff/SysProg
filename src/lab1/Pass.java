@@ -11,7 +11,7 @@ public class Pass {
     public int startAddress = 0;
     public int endAddress = 0;
     public int countAddress = 0;
-    public final int memoryMax = 33554432;
+    public final int memoryMax = 16777215;
 
     public List<List<String>> supportTable = new ArrayList<List<String>>();
     public List<List<String>> symbolTable = new ArrayList<List<String>>();

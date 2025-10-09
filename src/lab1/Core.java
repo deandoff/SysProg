@@ -129,7 +129,10 @@ public class Core extends Pass {
 
             String[] rowData = new String[4];
 
-            if (!dC.checkRow(sourceCode, i, rowData, nameProg)) {
+            boolean rowOk = dC.checkRow(sourceCode, i, rowData, nameProg);
+            System.out.printf("Line %d: checkRow returns %b, rowData=%s%n", i+1, rowOk, Arrays.toString(rowData));
+
+            if (!dC.checkRow(sourceCode, i, rowData, nameProg) && i == 0) {
                 errorText = "В строке"+ (i + 1) +" синтаксическая ошибка.";
                 return false;
             }
@@ -154,51 +157,69 @@ public class Core extends Pass {
                 if (dC.checkDirective(OC)) {
                     switch (OC) {
                         case "START": {
-                            if (i == 0 && !flagStart) {
+                            // Если START ещё не встречался
+                            if (!flagStart) {
                                 flagStart = true;
-                                if (dC.checkAddress(OP1)) {
-                                    OP1 = OP1.replaceFirst("^0+", "");
-                                    countAddress = Converter.convertHexToDec(OP1);
 
-                                    System.out.println(countAddress);
-
-                                    startAddress = countAddress;
-
-                                    if (countAddress == 0) {
-                                        errorText = "В строке" + (i + 1) + " ошибка. Адрес начала программы не может быть равен нулю";
-                                        return false;
-                                    }
-
-                                    if (countAddress > memoryMax || countAddress < 0) {
-                                        errorText = "В строке" + (i + 1) + " ошибка. Неправильный адрес загрузки";
-                                        return false;
-                                    }
-
-                                    if (mark == "") {
-                                        errorText = "В строке" + (i + 1) + " ошибка. Не задано имя программы";
-                                        return false;
-                                    }
-
-                                    if (mark.length() > 10) {
-                                        errorText = "В строке" + (i + 1) + " ошибка. Превышена длина имени программы\\n Имя программы должно быть не больше 10 символов";
-                                        return false;
-                                    }
-
-                                    addToSupportTable(mark, OC, Converter.convertToSixChars(OP1), "");
-                                    nameProg = mark;
-
-                                    if (OP2.length() > 0) {
-                                        errorText = "В строке" + (i + 1) + " второй операнд директивы START не рассматривается. Устраните и повторите заново.";
-                                        return false;
-                                    }
-                                } else {
-                                    errorText = "В строке" + (i + 1) + " ошибка. Повторное использование директивы START";
+                                // Проверяем, что указан адрес
+                                if (OP1.isEmpty()) {
+                                    errorText = "В строке " + (i + 1) + " ошибка. Не указан адрес начала программы.";
                                     return false;
                                 }
-                                break;
-                            }
 
+                                // Проверяем корректность адреса
+                                if (!dC.checkAddress(OP1)) {
+                                    try {
+                                        int op = Integer.parseInt(OP1);
+                                        if (op < 0) {
+                                            errorText = "В строке " + (i + 1) + " ошибка. Адрес начала не может быть отрицательным.";
+                                            return false;
+                                        }
+                                    } catch (NumberFormatException e) {
+                                        errorText = "В строке " + (i + 1) + " ошибка. Невозможно преобразовать адрес начала.";
+                                        return false;
+                                    }
+                                }
+
+                                // Убираем ведущие нули и конвертируем
+                                OP1 = OP1.replaceFirst("^0+", "");
+                                countAddress = Converter.convertHexToDec(OP1);
+                                startAddress = countAddress;
+
+                                if (countAddress == 0) {
+                                    errorText = "В строке " + (i + 1) + " ошибка. Адрес начала программы не может быть равен нулю";
+                                    return false;
+                                }
+                                if (countAddress > memoryMax || countAddress < 0) {
+                                    errorText = "В строке " + (i + 1) + " ошибка. Неправильный адрес загрузки";
+                                    return false;
+                                }
+                                if (mark.isEmpty()) {
+                                    errorText = "В строке " + (i + 1) + " ошибка. Не задано имя программы";
+                                    return false;
+                                }
+                                if (mark.length() > 10) {
+                                    errorText = "В строке " + (i + 1) + " ошибка. Превышена длина имени программы (не более 10 символов)";
+                                    return false;
+                                }
+
+                                // Добавляем в вспомогательную таблицу
+                                addToSupportTable(mark, OC, Converter.convertToSixChars(OP1), "");
+                                nameProg = mark;
+
+                                if (!OP2.isEmpty()) {
+                                    errorText = "В строке " + (i + 1) + " второй операнд директивы START не рассматривается.";
+                                    return false;
+                                }
+
+                            } else {
+                                // START уже был использован — выдаём корректное сообщение
+                                errorText = "В строке " + (i + 1) + " ошибка. Повторное использование директивы START.";
+                                return false;
+                            }
+                            break;
                         }
+
                         case "WORD": {
                             try {
                                 int numb = Integer.parseInt(OP1);
@@ -362,7 +383,7 @@ public class Core extends Pass {
                     if (OC.length() > 0) {
                         int numb = findCode(OC, operationCode);
                         if (numb > -1) {
-                            if (operationCode[numb][2] == "1") {
+                            if ("1".equals(operationCode[numb][2])) {
                                 if (!addCheckError(i, 1, Converter.convertToTwoChars(Converter.convertDecToHex(Converter.convertHexToDec(operationCode[numb][1]) * 4)), "", "")) {
                                     return false;
                                 }
@@ -471,6 +492,10 @@ public class Core extends Pass {
                     break;
                 }
 
+                if (res != null && !res.isEmpty()) {
+                    res = padHexEven(res);
+                }
+
                 boolean[] outFlags2 = new boolean[2];
                 String ress = checkOP(OP2, outFlags2);
                 error = outFlags2[0];
@@ -479,6 +504,10 @@ public class Core extends Pass {
                     errorText = "В строке " + (i + 1) + " ошибка. Код операнда отсутствует в ТСИ.";
                     BC.setText("");
                     break;
+                }
+
+                if (ress != null && !ress.isEmpty()) {
+                    ress = padHexEven(ress);
                 }
 
                 if (dC.checkDirective(OC)) {
@@ -503,11 +532,16 @@ public class Core extends Pass {
                             BC.setText("");
                             return false;
                         }
-                        if (!ress.equals("")) {
+                        if (!ress.isEmpty()) {
                             errorText = "В строке " + (i + 1) + " ошибка. Данный тип адрессации поддерживает один операнд";
                             BC.setText("");
                             return false;
                         }
+
+                        if (res != null && !res.isEmpty()) {
+                            res = padHexEven(res);
+                        }
+
                     }
 
                     BC.setText(BC.getText() + Converter.convertToBinaryCode(address, OC,
@@ -562,7 +596,6 @@ public class Core extends Pass {
                         return str;
                     }
 
-                    // если ни один случай не подошёл — ошибка
                     er = true;
                 }
             }
@@ -590,6 +623,16 @@ public class Core extends Pass {
         startAddress = 0;
         endAddress = 0;
         countAddress = 0;
+    }
+
+    private String padHexEven(String hex) {
+        if (hex == null || hex.isEmpty()) return hex;
+        hex = hex.toUpperCase().trim();
+        // если это одиночная цифра (например R1→1, R2→2) — добавляем ведущий 0
+        if (hex.length() == 1) return "0" + hex;
+        // если длина нечётная (например "B") — добавляем ведущий 0
+        if (hex.length() % 2 == 1) return "0" + hex;
+        return hex;
     }
 
 
