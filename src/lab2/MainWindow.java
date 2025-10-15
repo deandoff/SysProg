@@ -1,4 +1,4 @@
-package lab1;
+package lab2;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -14,6 +14,9 @@ public class MainWindow extends JFrame {
     private final JTextArea firstPassErrorTextBox;
     private final JTextArea secondPassErrorTextBox;
     private final JTextArea binaryCodeTextBox;
+    private final JTable settingTable;
+    private final JComboBox<String> addressingModeComboBox;
+    private int typeAdr = 0;
     private JButton firstPassButton = new JButton("Первый проход");
     private JButton secondPassButton = new JButton("Второй проход");
 
@@ -23,7 +26,7 @@ public class MainWindow extends JFrame {
     public MainWindow() {
         core = new Core();
 
-        setTitle("Двухпросмотровый ассемблер для программ в абсолютном формате");
+        setTitle("Двухпросмотровый ассемблер для программ в перемещаемом формате");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1050, 750);
         setLayout(null);
@@ -58,36 +61,49 @@ public class MainWindow extends JFrame {
         JPanel group2 = new JPanel(null);
         group2.setBounds(350, 10, 330, 610);
 
-        JLabel label3 = new JLabel("Вспомогательная таблица");
+        JLabel label3 = new JLabel("Вспомогательная панель");
         label3.setBounds(80, 10, 200, 20);
         group2.add(label3);
 
         supportTable = new JTable(new DefaultTableModel(new String[]{"Адрес", "Команда", "Операнд1", "Операнд2"}, 0));
         JScrollPane scrollSupport = new JScrollPane(supportTable);
-        scrollSupport.setBounds(5, 35, 315, 270);
+        scrollSupport.setBounds(5, 35, 315, 200);
         group2.add(scrollSupport);
 
-        JLabel label4 = new JLabel("Таблица символических имен");
-        label4.setBounds(70, 315, 220, 20);
-        group2.add(label4);
+        JLabel labelSupport = new JLabel("Вспомогательная таблица");
+        labelSupport.setBounds(80, 240, 200, 20);
+        group2.add(labelSupport);
 
-        String[] symCols = {"Имя", "Адрес"};
-        symbolTable = new JTable(new DefaultTableModel(symCols, 0));
+        symbolTable = new JTable(new DefaultTableModel(new String[]{"Имя", "Адрес"}, 0));
         JScrollPane scrollSym = new JScrollPane(symbolTable);
-        scrollSym.setBounds(60, 340, 210, 140);
+        scrollSym.setBounds(5, 270, 150, 150);
         group2.add(scrollSym);
 
-        JLabel label5 = new JLabel("Ошибки первого прохода");
-        label5.setBounds(80, 485, 200, 20);
-        group2.add(label5);
+        JLabel labelSym = new JLabel("Символические имена");
+        labelSym.setBounds(5, 430, 150, 20);
+        group2.add(labelSym);
+
+        settingTable = new JTable(new DefaultTableModel(new String[]{"Адрес"}, 0));
+        JScrollPane scrollSetting = new JScrollPane(settingTable);
+        scrollSetting.setBounds(170, 270, 150, 150);
+        group2.add(scrollSetting);
+
+        JLabel labelSetting = new JLabel("Таблица настроек");
+        labelSetting.setBounds(170, 430, 150, 20);
+        group2.add(labelSetting);
 
         firstPassErrorTextBox = new JTextArea();
         firstPassErrorTextBox.setEditable(false);
         JScrollPane scrollErr1 = new JScrollPane(firstPassErrorTextBox);
-        scrollErr1.setBounds(5, 510, 315, 90);
+        scrollErr1.setBounds(5, 460, 315, 90);
         group2.add(scrollErr1);
 
+        JLabel labelErr1 = new JLabel("Ошибки первого прохода");
+        labelErr1.setBounds(80, 555, 200, 20);
+        group2.add(labelErr1);
+
         add(group2);
+
 
         JPanel group3 = new JPanel(null);
         group3.setBounds(690, 10, 330, 610);
@@ -130,31 +146,77 @@ public class MainWindow extends JFrame {
         loadExampleProgram();
 
         setVisible(true);
+
+        JLabel labelAddressing = new JLabel("Тип адресации:");
+        labelAddressing.setBounds(700, 640, 120, 20);
+        add(labelAddressing);
+
+        addressingModeComboBox = new JComboBox<>(new String[]{"Прямая", "Относительная", "Смешанная"});
+        addressingModeComboBox.setBounds(800, 640, 200, 25);
+        addressingModeComboBox.addActionListener(e -> {
+            typeAdr = addressingModeComboBox.getSelectedIndex();
+        });
+        add(addressingModeComboBox);
     }
 
     private void performFirstPass() {
-        // Очистка старых данных
         ((DefaultTableModel) supportTable.getModel()).setRowCount(0);
         ((DefaultTableModel) symbolTable.getModel()).setRowCount(0);
+        ((DefaultTableModel) settingTable.getModel()).setRowCount(0);
         firstPassErrorTextBox.setText("");
 
-        // Получаем исходный код
-        String[] lines = sourceCodeTextBox.getText().split("\n");
         String[][] sourceCode = parseSourceCode(sourceCodeTextBox.getText());
+        if (sourceCode == null || sourceCode.length == 0) {
+            JOptionPane.showMessageDialog(this, "Исходный код пуст.", "Ошибка", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
-        // Получаем таблицу кодов операций
+        for (int i = 0; i < sourceCode.length; i++) {
+            String[] row = sourceCode[i];
+            String command = row.length > 1 ? row[1] : "";
+            String operand1 = row.length > 2 ? row[2] : "";
+
+            if (command == null || command.isEmpty()) continue;
+            if (operand1 == null) operand1 = "";
+
+            DefaultTableModel opModel = (DefaultTableModel) operationCodeTable.getModel();
+            boolean isCommand = false;
+            for (int j = 0; j < opModel.getRowCount(); j++) {
+                Object val = opModel.getValueAt(j, 0);
+                if (val != null && val.toString().equalsIgnoreCase(command)) {
+                    isCommand = true;
+                    break;
+                }
+            }
+            if (!isCommand) continue;
+
+            if (operand1.isEmpty()) continue;
+
+            if (typeAdr == 0 && (operand1.contains("[") || operand1.contains("]"))) {
+                firstPassErrorTextBox.setText("Ошибка. Относительная адресация в " + (i + 1) + " строке. В программе выбрана прямая адресация.");
+                return;
+            }
+
+            if (typeAdr == 1
+                    && (!operand1.contains("[") || !operand1.contains("]"))
+                    && !isNumeric(operand1)
+                    && !isRegister(operand1)) {
+                firstPassErrorTextBox.setText("Ошибка. Прямая адресация в " + (i + 1) + " строке. В программе выбрана относительная адресация.");
+                return;
+            }
+        }
+
         DefaultTableModel opModel = (DefaultTableModel) operationCodeTable.getModel();
         String[][] operationCode = new String[opModel.getRowCount()][3];
         for (int i = 0; i < opModel.getRowCount(); i++) {
             for (int j = 0; j < 3; j++) {
-                operationCode[i][j] = (String) opModel.getValueAt(i, j);
+                Object val = opModel.getValueAt(i, j);
+                operationCode[i][j] = (val == null) ? "" : val.toString();
             }
         }
 
-        // Вызываем первый проход
         boolean success = core.doFirstPass(sourceCode, operationCode, supportTable, symbolTable);
 
-        // Выводим результат
         if (success) {
             firstPassErrorTextBox.setText("Первый проход успешно завершён ✅");
             secondPassButton.setEnabled(true);
@@ -162,7 +224,22 @@ public class MainWindow extends JFrame {
             firstPassErrorTextBox.setText(core.errorText);
             secondPassButton.setEnabled(false);
         }
+    }
 
+
+    private boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) return false;
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
+    private boolean isRegister(String str) {
+        if (str == null || str.isEmpty()) return false;
+        return str.matches("(?i)R\\d{1,2}");
     }
 
     private String[][] parseSourceCode(String sourceText) {
@@ -247,7 +324,7 @@ public class MainWindow extends JFrame {
         secondPassErrorTextBox.setText("");
         binaryCodeTextBox.setText("");
 
-        boolean success = core.doSecondPass(binaryCodeTextBox);
+        boolean success = core.doSecondPass(binaryCodeTextBox, settingTable);
 
         if (success && core.errorText.isEmpty()) {
             secondPassErrorTextBox.setText("Второй проход успешно завершён ✅");
@@ -279,7 +356,7 @@ public class MainWindow extends JFrame {
 
     private void loadExampleProgram() {
         String exampleProgram =
-                "PROG START 100\n" +
+                "PROG START 0\n" +
                         "     JMP     L1\n" +
                         "A1   RESB    10\n" +
                         "A2   RESW    20\n" +
@@ -293,7 +370,7 @@ public class MainWindow extends JFrame {
                         "     SUB     R1 R2\n" +
                         "     SAVER1  B1\n" +
                         "     NOP\n" +
-                        "     END     100";
+                        "     END  ";
 
         sourceCodeTextBox.setText(exampleProgram);
     }
