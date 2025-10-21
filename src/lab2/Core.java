@@ -98,7 +98,7 @@ public class Core extends Pass {
         return true;
     }
 
-    public boolean doFirstPass(String[][] sourceCode, String[][] operationCode, JTable supportTableJT, JTable symbolTableJT) {
+    public boolean doFirstPass(String[][] sourceCode, String[][] operationCode, JTable supportTableJT, JTable symbolTableJT, int typeAdr) {
         startAddress = 0;
         endAddress = 0;
         countAddress = 0;
@@ -144,6 +144,54 @@ public class Core extends Pass {
             String OC = rowData[1];
             String OP1 = rowData[2];
             String OP2 = rowData[3];
+
+// --- Проверка повторяющихся меток ---
+            if (!mark.isEmpty()) {
+                for (String[] op : operationCode) {
+                    if (mark.equalsIgnoreCase(op[0])) {
+                        errorText = "В строке " + (i + 1) + " ошибка: метка '" + mark + "' совпадает с названием команды";
+                        return false;
+                    }
+                }
+            }
+
+            if (isDirective(mark)) {
+                errorText = "В строке " + (i + 1) + " ошибка: метка '" + mark + "' совпадает с названием директивы";
+                return false;
+            }
+
+            // Проверка на совпадение с регистрами
+            if (isRegister(mark)) {
+                errorText = "В строке " + (i + 1) + " ошибка: метка '" + mark + "' совпадает с названием регистра";
+                return false;
+            }
+
+            // Проверка на дубликаты меток
+            if (findMark(mark) != -1) {
+                errorText = "В строке " + (i + 1) + " ошибка. Найдена уже существующая метка " + mark;
+                return false;
+            }
+// --- Проверка пустых операндов ---
+            if (OP1.contains("[]") || OP2.contains("[]")) {
+                errorText = "В строке " + (i + 1) + " ошибка: пустой операнд '[]'";
+                return false;
+            }
+
+// --- Проверка уникальности метки ---
+            if (!mark.isEmpty() && findMark(mark) != -1) {
+                errorText = "В строке " + (i + 1) + " ошибка: метка '" + mark + "' уже существует";
+                return false;
+            }
+
+// --- Проверка операнда на соответствие типу адресации ---
+            if (typeAdr == 0 && OP1.contains("[") && OP1.contains("]")) {
+                errorText = "В строке " + (i + 1) + " ошибка: относительная адресация при выборе прямой";
+                return false;
+            }
+            if (typeAdr == 1 && (!OP1.contains("[") || !OP1.contains("]")) && !dC.checkRegisters(OP1) && !isNumeric(OP1)) {
+                errorText = "В строке " + (i + 1) + " ошибка: прямая адресация при выборе относительной";
+                return false;
+            }
 
             if (findMark(mark) != -1) {
                 errorText = "В строке"+ (i + 1) +" ошибка. Найдена уже существующая метка " + mark;
@@ -464,9 +512,8 @@ public class Core extends Pass {
         return true;
     }
 
-    public boolean doSecondPass(JTextArea BC, JTable settingTableJT) {
+    public boolean doSecondPass(JTextArea BC, JTable settingTableJT, int typeAdr) {
         errorText = "";
-
         List<String> settingTable = new ArrayList<>();
 
         for (int i = 0; i < supportTable.get(0).size(); i++) {
@@ -517,52 +564,102 @@ public class Core extends Pass {
             if (res != null && !res.isEmpty()) res = padHexEven(res);
             if (ress != null && !ress.isEmpty()) ress = padHexEven(ress);
 
-            // --- обработка директив ---
-            if (dC.checkDirective(OC)) {
-                if (OC.equals("RESB")) {
-                    BC.append(Converter.convertToBinaryCode(address, "", res, "", "") + "\r\n");
-                    continue;
-                } else if (OC.equals("RESW")) {
-                    BC.append(Converter.convertToBinaryCode(address, "",
-                            Converter.convertToTwoChars(
-                                    Converter.convertDecToHex(Integer.parseInt(OP1) * 3)),
-                            "", "") + "\r\n");
-                    continue;
-                } else if (OC.equals("BYTE")) {
-                    BC.append(Converter.convertToBinaryCode(address, "",
-                            Converter.convertToTwoChars(
-                                    Converter.convertDecToHex(res.length() + ress.length())),
-                            res, ress) + "\r\n");
-                    continue;
-                } else if (OC.equals("WORD")) {
-                    BC.append(Converter.convertToBinaryCode(address, "",
-                            Converter.convertToTwoChars(
-                                    Converter.convertDecToHex(
-                                            Converter.convertToSixChars(res).length() + ress.length())),
-                            Converter.convertToSixChars(res), ress) + "\r\n");
-                    continue;
+            // --- вычисление кода операции с учётом типа адресации ---
+            int opcodeBase = 0;
+            int finalOpcode = 0;
+            int offset = 0;
+
+            // Определяем базовый код операции (для директив = 0)
+            if (!dC.checkDirective(OC)) {
+                try {
+                    opcodeBase = Converter.convertHexToDec(OC);
+                } catch (Exception e) {
+                    opcodeBase = 0;
                 }
             }
+
+            // Определяем тип адресации
+            if (typeAdr == 0) {             // Прямая
+                offset = 1;
+            } else if (typeAdr == 1) {      // Относительная
+                offset = 2;
+            } else if (typeAdr == 2) {      // Смешанная
+                // Если операнд содержит квадратные скобки — относительная
+                if ((!OP1.isEmpty() && OP1.startsWith("[") && OP1.endsWith("]")) ||
+                        (!OP2.isEmpty() && OP2.startsWith("[") && OP2.endsWith("]"))) {
+                    offset = 2;
+                } else {
+                    offset = 1;
+                }
+            }
+
+            // Финальное вычисление кода операции
+            finalOpcode = opcodeBase * 4 + offset;
+
+            // --- обработка директив ---
+            if (dC.checkDirective(OC)) {
+                switch (OC) {
+                    case "RESB":
+                        BC.append(Converter.convertToBinaryCode(
+                                address,
+                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
+                                res, "", "") + "\r\n");
+                        continue;
+
+                    case "RESW":
+                        BC.append(Converter.convertToBinaryCode(
+                                address,
+                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
+                                Converter.convertToTwoChars(
+                                        Converter.convertDecToHex(Integer.parseInt(OP1) * 3)),
+                                "", "") + "\r\n");
+                        continue;
+
+                    case "BYTE":
+                        BC.append(Converter.convertToBinaryCode(
+                                address,
+                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
+                                Converter.convertToTwoChars(
+                                        Converter.convertDecToHex(res.length() + ress.length())),
+                                res, ress) + "\r\n");
+                        continue;
+
+                    case "WORD":
+                        BC.append(Converter.convertToBinaryCode(
+                                address,
+                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
+                                Converter.convertToTwoChars(
+                                        Converter.convertDecToHex(
+                                                Converter.convertToSixChars(res).length() + ress.length())),
+                                Converter.convertToSixChars(res), ress) + "\r\n");
+                        continue;
+                }
+            }
+
             // --- обработка инструкций ---
             else {
-                int type = (byte) Converter.convertHexToDec(OC) & 0x03;
-                if (type == 1) {
-                    if (!flagMark) {
-                        errorText = "В строке " + (i + 1) + " ошибка. Для данного типа адресации операнд должен быть меткой";
-                        BC.setText("");
-                        return false;
-                    }
-                    if (!ress.isEmpty()) {
-                        errorText = "В строке " + (i + 1) + " ошибка. Данный тип адрессации поддерживает один операнд";
-                        BC.setText("");
-                        return false;
-                    }
+                // Проверка корректности для относительной адресации
+                if (offset == 2 && !flagMark) {
+                    errorText = "В строке " + (i + 1) + " ошибка. Для относительной адресации операнд должен быть меткой";
+                    BC.setText("");
+                    return false;
                 }
 
+                // Проверка для смешанного типа
+                if (offset == 2 && !ress.isEmpty()) {
+                    errorText = "В строке " + (i + 1) + " ошибка. Относительная адресация поддерживает только один операнд";
+                    BC.setText("");
+                    return false;
+                }
+
+                // Финальное добавление команды в бинарный код
+                String opcodeHex = Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode));
+
                 BC.append(Converter.convertToBinaryCode(
-                        address, OC,
+                        address,
+                        opcodeHex,
                         Converter.convertToTwoChars(
-                                Converter.convertDecToHex(OC.length() + res.length() + ress.length())),
+                                Converter.convertDecToHex(opcodeHex.length() + res.length() + ress.length())),
                         res, ress) + "\r\n");
             }
 
@@ -576,7 +673,7 @@ public class Core extends Pass {
             }
         }
 
-        // --- добавление записей таблицы настройки (Modification Records) ---
+        // --- добавление записей таблицы настройки ---
         for (String s : settingTable) {
             BC.append(Converter.convertToBinaryCodeSetting(s) + "\r\n");
         }
@@ -591,6 +688,7 @@ public class Core extends Pass {
 
         return true;
     }
+
 
 
     public String checkOP(String OP, boolean[] outFlags, String[] outAddress, int ind) {
@@ -612,7 +710,7 @@ public class Core extends Pass {
                 n = findMark(temp);
                 if (n > -1) {
                     flag = true;
-                    res = Converter.convertSubHex(symbolTable.get(1).get(n), supportTable.get(0).get(ind));
+                    res = Converter.convertSubHex(symbolTable.get(1).get(n), supportTable.get(0).get(ind + 1));
                 } else {
                     er = true;
                 }
@@ -695,7 +793,32 @@ public class Core extends Pass {
         return true;
     }
 
+    public boolean isNumeric(String str) {
+        if (str == null || str.isEmpty()) return false;
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
+    }
 
+    public boolean isDirective(String str) {
+        if (str == null) return false;
+        String upper = str.toUpperCase();
+        return upper.equals("START") || upper.equals("END") || upper.equals("WORD") || upper.equals("BYTE")
+                || upper.equals("RESB") || upper.equals("RESW");
+    }
+
+    public boolean isRegister(String str) {
+        if (str == null) return false;
+        String upper = str.toUpperCase();
+        return upper.equals("R0") || upper.equals("R1") || upper.equals("R2") || upper.equals("R3")
+                || upper.equals("R4") || upper.equals("R5") || upper.equals("R6") || upper.equals("R7") ||
+                upper.equals("R8") || upper.equals("R9") || upper.equals("R10") ||
+                upper.equals("R11") || upper.equals("R12") || upper.equals("R13") ||
+                upper.equals("R14") || upper.equals("R15");
+    }
 
 
 

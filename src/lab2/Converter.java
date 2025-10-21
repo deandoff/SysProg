@@ -88,7 +88,7 @@ public class Converter {
     }
 
     public static String convertToBinaryCodeSTART(String address, String command, String OP1) {
-        return "H" + " " + address + " " + command + " " + convertToSixChars(convertDecToHex(Integer.parseInt(OP1)));
+        return "H" + " " + address + " " + "000000" + " " + convertToSixChars(convertDecToHex(Integer.parseInt(OP1)));
     }
 
     public static String convertToBinaryCode(String address, String command, String length, String OP1, String OP2) {
