@@ -537,8 +537,8 @@ public class Core extends Pass {
             }
 
             // --- обработка первого операнда ---
-            boolean[] outFlags1 = new boolean[2]; // [0] = error, [1] = flagMark
-            String[] outAddress = new String[1];  // адрес для таблицы настройки
+            boolean[] outFlags1 = new boolean[2];
+            String[] outAddress = new String[1];
             String res = checkOP(OP1, outFlags1, outAddress, i);
             boolean error1 = outFlags1[0];
             boolean flagMark = outFlags1[1];
@@ -552,7 +552,6 @@ public class Core extends Pass {
 
             settingTable(tuneAddress, settingTable);
 
-            // --- обработка второго операнда ---
             boolean[] outFlags2 = new boolean[2];
             String[] outAddress2 = new String[1];
             String ress = checkOP(OP2, outFlags2, outAddress2, i);
@@ -585,23 +584,18 @@ public class Core extends Pass {
                 }
             }
 
-            // Определяем тип адресации
             if (typeAdr == 0) {             // Прямая
-                offset = 1;
+                finalOpcode = opcodeBase;
             } else if (typeAdr == 1) {      // Относительная
-                offset = 2;
+                finalOpcode = opcodeBase + 1;
             } else if (typeAdr == 2) {      // Смешанная
-                // Если операнд содержит квадратные скобки — относительная
                 if ((!OP1.isEmpty() && OP1.startsWith("[") && OP1.endsWith("]")) ||
                         (!OP2.isEmpty() && OP2.startsWith("[") && OP2.endsWith("]"))) {
-                    offset = 2;
+                    finalOpcode = opcodeBase + 1;
                 } else {
-                    offset = 1;
+                    finalOpcode = opcodeBase;
                 }
             }
-
-            // Финальное вычисление кода операции
-            finalOpcode = opcodeBase * 4 + offset;
 
             // --- обработка директив ---
             if (dC.checkDirective(OC)) {
