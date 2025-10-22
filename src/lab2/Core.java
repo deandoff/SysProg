@@ -673,8 +673,7 @@ public class Core extends Pass {
                 }
             }
         }
-
-        // --- добавление записей таблицы настройки ---
+        
         for (String s : settingTable) {
             BC.append(Converter.convertToBinaryCodeSetting(s) + "\r\n");
         }

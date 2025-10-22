@@ -370,36 +370,30 @@ public class MainWindow extends JFrame {
             String[] parts = new String[4];
             Arrays.fill(parts, "");
 
-            int idx = 0;  // индекс для записи в parts
-            int pos = 0;  // текущая позиция в строке
+            int idx = 0;
+            int pos = 0;
 
             while (pos < line.length() && idx < 4) {
-                // Пропускаем пробелы
                 while (pos < line.length() && Character.isWhitespace(line.charAt(pos))) pos++;
                 if (pos >= line.length()) break;
 
-                // Если встретили C" или X"
                 if (pos + 1 < line.length() && (line.charAt(pos) == 'C' || line.charAt(pos) == 'X') && line.charAt(pos + 1) == '"') {
                     int firstQuote = pos + 1;
                     int lastQuote = line.lastIndexOf('"');
                     if (lastQuote == -1 || lastQuote <= firstQuote) {
-                        // Закрывающей кавычки нет — читаем до конца
                         parts[idx++] = line.substring(pos).toUpperCase();
                         pos = line.length();
                     } else {
-                        // Берём всю строку от первой до последней кавычки
                         parts[idx++] = line.substring(pos, lastQuote + 1).toUpperCase();
                         pos = lastQuote + 1;
                     }
                 } else {
-                    // обычный токен до следующего пробела
                     int start = pos;
                     while (pos < line.length() && !Character.isWhitespace(line.charAt(pos))) pos++;
                     parts[idx++] = line.substring(start, pos).toUpperCase();
                 }
             }
 
-            // если первая колонка — пробел в начале строки
             if (hasLeadingSpace) {
                 sourceCode[i][0] = "";
                 for (int j = 0; j < 3; j++) {
