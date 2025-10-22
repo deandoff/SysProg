@@ -145,6 +145,13 @@ public class Core extends Pass {
             String OP1 = rowData[2];
             String OP2 = rowData[3];
 
+            if (!mark.isEmpty()) {
+                if (!mark.matches("^[A-Za-z][A-Za-z0-9_]*$")) {
+                    errorText = "В строке " + (i + 1) + " ошибка: недопустимые символы в имени метки '" + mark + "'";
+                    return false;
+                }
+            }
+
 // --- Проверка повторяющихся меток ---
             if (!mark.isEmpty()) {
                 for (String[] op : operationCode) {
