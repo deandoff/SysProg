@@ -195,10 +195,11 @@ public class Core extends Pass {
                 errorText = "В строке " + (i + 1) + " ошибка: относительная адресация при выборе прямой";
                 return false;
             }
-            if (typeAdr == 1 && (!OP1.contains("[") || !OP1.contains("]")) && !dC.checkRegisters(OP1) && !isNumeric(OP1)) {
-                errorText = "В строке " + (i + 1) + " ошибка: прямая адресация при выборе относительной";
-                return false;
-            }
+
+//            if (typeAdr == 1 && (!OP1.contains("[") || !OP1.contains("]")) && !dC.checkRegisters(OP1) && !isNumeric(OP1)) {
+//                errorText = "В строке " + (i + 1) + " ошибка: прямая адресация при выборе относительной";
+//                return false;
+//            }
 
             if (findMark(mark) != -1) {
                 errorText = "В строке"+ (i + 1) +" ошибка. Найдена уже существующая метка " + mark;
