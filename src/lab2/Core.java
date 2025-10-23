@@ -567,9 +567,10 @@ public class Core extends Pass {
 
             settingTable(tuneAddress, settingTable);
 
-            // --- выравнивание шестнадцатеричных строк ---
-            if (res != null && !res.isEmpty()) res = padHexEven(res);
-            if (ress != null && !ress.isEmpty()) ress = padHexEven(ress);
+            if (!isRegister(OP1) && !isRegister(OP2)) {
+                if (res != null && !res.isEmpty()) res = padHexEven(res);
+                if (ress != null && !ress.isEmpty()) ress = padHexEven(ress);
+            }
 
             // --- вычисление кода операции с учётом типа адресации ---
             int opcodeBase = 0;
@@ -638,7 +639,6 @@ public class Core extends Pass {
                 }
             }
 
-            // --- обработка инструкций ---
             else {
                 // Проверка корректности для относительной адресации
                 if (offset == 2 && !flagMark) {

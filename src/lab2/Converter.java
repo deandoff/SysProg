@@ -50,6 +50,32 @@ public class Converter {
         return convertNumber;
     }
 
+    public static String convertToOneChars(String str) {
+        final int lengthNumber = 1;
+        var chars = str.toCharArray();
+        var sum = new char[lengthNumber];
+        String convertNumber = "";
+
+        if (str.equals(""))
+            return "";
+
+        if (chars.length <= lengthNumber) {
+            int needZero = lengthNumber - chars.length;
+
+            for (int i = lengthNumber - 1; i >= needZero; i--)
+                sum[i] = chars[i - needZero];
+
+            for (int i = 0; i < needZero; i++)
+                sum[i] = '0';
+
+            for (var s : sum) {
+                convertNumber += s;
+            }
+        }
+
+        return convertNumber;
+    }
+
     public static String convertToSixChars(String str) {
         final int lengthNumber = 6;
         var chars = str.toCharArray();
