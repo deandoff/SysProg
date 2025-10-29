@@ -1,4 +1,4 @@
-package lab2;
+package lab3;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
@@ -30,7 +30,7 @@ public class MainWindow extends JFrame {
     public MainWindow() {
         core = new Core();
 
-        setTitle("Двухпросмотровый ассемблер для программ в перемещаемом формате");
+        setTitle("Двухпросмотровый ассемблер для программ в полноперемещаемом формате");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setSize(1050, 750);
         setLayout(null);
@@ -83,22 +83,22 @@ public class MainWindow extends JFrame {
         labelSupport.setBounds(80, 240, 200, 20);
         group2.add(labelSupport);
 
-        symbolTable = new JTable(new DefaultTableModel(new String[]{"Имя", "Адрес"}, 0));
+        symbolTable = new JTable(new DefaultTableModel(new String[]{"Имя", "Адрес", "Секция", "Тип"}, 0));
         JScrollPane scrollSym = new JScrollPane(symbolTable);
-        scrollSym.setBounds(5, 270, 150, 150);
+        scrollSym.setBounds(5, 270, 165, 150);
         group2.add(scrollSym);
 
         JLabel labelSym = new JLabel("Символические имена");
-        labelSym.setBounds(5, 430, 150, 20);
+        labelSym.setBounds(5, 430, 180, 20);
         group2.add(labelSym);
 
-        settingTable = new JTable(new DefaultTableModel(new String[]{"Адрес"}, 0));
+        settingTable = new JTable(new DefaultTableModel(new String[]{"Адрес", "Метка"}, 0));
         JScrollPane scrollSetting = new JScrollPane(settingTable);
-        scrollSetting.setBounds(170, 270, 150, 150);
+        scrollSetting.setBounds(200, 270, 120, 150);
         group2.add(scrollSetting);
 
         JLabel labelSetting = new JLabel("Таблица настроек");
-        labelSetting.setBounds(170, 430, 150, 20);
+        labelSetting.setBounds(200, 430, 150, 20);
         group2.add(labelSetting);
 
         firstPassErrorTextBox = new JTextArea();
@@ -311,6 +311,7 @@ public class MainWindow extends JFrame {
         if (success) {
             firstPassErrorTextBox.setText("Первый проход успешно завершён ✅");
             secondPassButton.setEnabled(true);
+            firstPassButton.setEnabled(false);
         } else {
             firstPassErrorTextBox.setText(core.errorText);
             secondPassButton.setEnabled(false);
@@ -321,9 +322,7 @@ public class MainWindow extends JFrame {
         if ((name == null || name.isEmpty()) &&
                 (code == null || code.isEmpty()) &&
                 (length == null || length.isEmpty())) return null;
-        if (name.equalsIgnoreCase("WORD") || name.equalsIgnoreCase("START") || name.equalsIgnoreCase("END")
-                || name.equalsIgnoreCase("BYTE") || name.equalsIgnoreCase("RESB") || name.equalsIgnoreCase("RESW"))
-            return "Название команды не может совпадать с названием директивы";
+
         if (name == null || name.isEmpty()) return "Не указано название команды";
         if (code == null || code.isEmpty()) return "Не указан код команды";
         if (!code.matches("\\d+")) return "Код команды должен быть десятичным числом";
@@ -437,6 +436,7 @@ public class MainWindow extends JFrame {
         if (success && core.errorText.isEmpty()) {
             secondPassErrorTextBox.setText("Второй проход успешно завершён ✅");
             secondPassButton.setEnabled(false);
+            firstPassButton.setEnabled(true);
         } else {
             secondPassErrorTextBox.setText(core.errorText);
         }
@@ -466,21 +466,28 @@ public class MainWindow extends JFrame {
     private void loadExampleProgram() {
         String exampleProgram =
                 "PROG START 0\n" +
-                        "     JMP     L1\n" +
-                        "A1   RESB    10\n" +
-                        "A2   RESW    20\n" +
-                        "B1   WORD    4096\n" +
-                        "B2   BYTE    X\"2F4C008A\"\n" +
-                        "B3   BYTE    C\"Hello,Assembler!\"\n" +
-                        "B4   BYTE    128\n" +
-                        "L1   LOADR1  B1\n" +
-                        "     LOADR2  B4\n" +
-                        "     ADD     R1 R2\n" +
-                        "     SUB     R1 R2\n" +
-                        "     SAVER1  B1\n" +
-                        "     NOP\n" +
-                        "     END  ";
-
+                        "     EXTDEF D23\n" +
+                        "     EXTDEF D4\n" +
+                        "     EXTREF D2\n" +
+                        "     EXTREF D546\n" +
+                        "T1   RESB   10\n" +
+                        "D23  RESW   10\n" +
+                        "D4   SAVER1 D546\n" +
+                        "D42  LOADR1 T1\n" +
+                        "     RESB   10\n" +
+                        "A2   CSECT\n" +
+                        "     EXTDEF D2\n" +
+                        "     EXTREF D4\n" +
+                        "     EXTREF D58\n" +
+                        "D2   SAVER1 D2\n" +
+                        "B2   BYTE   X\"2F4C008A\"\n" +
+                        "B3   BYTE   C\"Hello!\"\n" +
+                        "B4   BYTE   128\n" +
+                        "     LOADR1 B2\n" +
+                        "     LOADR2 B4\n" +
+                        "     LOADR1 D2\n" +
+                        "T3   NOP\n" +
+                        "     END 0";
         sourceCodeTextBox.setText(exampleProgram);
     }
 }
