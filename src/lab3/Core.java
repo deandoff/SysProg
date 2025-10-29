@@ -43,6 +43,9 @@ public class Core extends Pass {
         externalDefNames.clear();
         externalRefNames.clear();
 
+        System.out.println("=== НАЧАЛО ПЕРВОГО ПРОХОДА ===");
+        System.out.println("sectionNames после очистки: " + sectionNames);
+
         symbolTable.add(new ArrayList<String>());
         symbolTable.add(new ArrayList<String>());
         symbolTable.add(new ArrayList<String>());
@@ -214,8 +217,23 @@ public class Core extends Pass {
                                     return false;
                                 }
 
+                                // ПРОВЕРКА ДУБЛИРОВАНИЯ ИМЕНИ - ДОЛЖНА БЫТЬ ЗДЕСЬ!
+                                if (sectionNames.contains(mark)) {
+                                    System.out.println("ОШИБКА: Имя START секции уже существует: " + mark);
+                                    System.out.println("Текущие sectionNames: " + sectionNames);
+                                    errorText = "В строке " + (i + 1) + " ошибка. Имя START секции уже используется: " + mark;
+                                    return false;
+                                }
+
                                 addToSupportTable(mark, OC, Converter.convertToSixChars(OP1), "");
+
+                                // ДОБАВЛЯЕМ В sectionNames ПЕРЕД установкой nameProg
+                                sectionNames.add(mark);
+                                System.out.println("START: Добавлено имя '" + mark + "' в sectionNames");
+                                System.out.println("Текущие sectionNames: " + sectionNames);
+
                                 nameProg = mark;
+                                currentCsectName = nameProg;
 
                                 if (!OP2.isEmpty()) {
                                     errorText = "В строке " + (i + 1) + " второй операнд директивы START не рассматривается.";
@@ -226,8 +244,6 @@ public class Core extends Pass {
                                 errorText = "В строке " + (i + 1) + " ошибка. Повторное использование директивы START.";
                                 return false;
                             }
-                            nameProg = mark;
-                            currentCsectName = nameProg;
                             break;
                         }
                         case "CSECT": {
@@ -238,9 +254,32 @@ public class Core extends Pass {
                                 return false;
                             }
 
+                            System.out.println("Обработка CSECT: mark='" + mark + "', nameProg='" + nameProg + "'");
+                            System.out.println("Текущие sectionNames: " + sectionNames);
+
+                            // ПРОВЕРКА ДУБЛИРОВАНИЯ ИМЕНИ - В САМОМ НАЧАЛЕ!
+                            if (sectionNames.contains(mark)) {
+                                System.out.println("ОШИБКА: Повторное имя секции: " + mark);
+                                System.out.println("Текущие sectionNames: " + sectionNames);
+                                errorText = "В строке " + (i + 1) + " ошибка. Повторное имя секции: " + mark;
+                                return false;
+                            }
+
+                            // Проверка совпадения с именем START секции
+                            if (mark.equals(nameProg)) {
+                                System.out.println("ОШИБКА: Имя CSECT совпадает с именем START секции: " + mark);
+                                errorText = "В строке " + (i + 1) + " ошибка. Имя секции CSECT совпадает с именем START секции: " + mark;
+                                return false;
+                            }
+
+                            // ДОБАВЛЯЕМ В sectionNames СРАЗУ ПОСЛЕ ПРОВЕРОК
+                            sectionNames.add(mark);
+                            System.out.println("CSECT: Добавлено имя '" + mark + "' в sectionNames");
+                            System.out.println("Текущие sectionNames: " + sectionNames);
+
                             endSection.add(Converter.convertToSixChars(Converter.convertDecToHex(countAddress)));
                             int oldAddressCount = countAddress;
-                            countAddress = 0;
+                            countAddress = 0;  // ← СБРОС ДЛЯ НОВОЙ СЕКЦИИ!
                             startAddress = countAddress;
 
                             if (dC.checkLettersAndNumbers(OP1) || OP1.isEmpty()) {
@@ -278,27 +317,22 @@ public class Core extends Pass {
                                     }
                                 }
 
-                                for (String str : sectionNames) {
-                                    if (str.equals(mark)) {
-                                        errorText = "В строке " + (i + 1) + " ошибка. Имя секции совпадает с системным именем";
-                                        return false;
-                                    }
-                                }
-
                                 if (dC.checkDirective(OP1) || dC.checkRegisters(OP1)) {
                                     errorText = "В строке " + (i + 1) + " ошибка. Имя секции совпадает с системным именем";
                                     return false;
                                 }
 
+                                // ИСПРАВЛЕНИЕ: используем countAddress (который теперь = 0), а не oldAddressCount
                                 addToSupportTable(
-                                        Converter.convertToSixChars(Converter.convertDecToHex(oldAddressCount)),
+                                        Converter.convertToSixChars(Converter.convertDecToHex(countAddress)),  // ← countAddress = 000000
                                         OC,
                                         mark,
                                         ""
                                 );
 
+                                // УСТАНАВЛИВАЕМ nameProg ПОСЛЕ ВСЕХ ПРОВЕРОК
                                 nameProg = mark;
-                                sectionNames.add(mark);
+                                currentCsectName = nameProg;
 
                                 if (!OP2.isEmpty()) {
                                     errorText = "В строке " + (i + 1) + " второй операнд директивы CSECT не рассматривается. Устраните и повторите заново.";
@@ -309,9 +343,6 @@ public class Core extends Pass {
                                 errorText = "В строке " + (i + 1) + " ошибка. Неверный адрес начала программы";
                                 return false;
                             }
-
-                            nameProg = mark;
-                            currentCsectName = nameProg;
                             break;
                         }
 

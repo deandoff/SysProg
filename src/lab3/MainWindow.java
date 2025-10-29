@@ -439,6 +439,8 @@ public class MainWindow extends JFrame {
             firstPassButton.setEnabled(true);
         } else {
             secondPassErrorTextBox.setText(core.errorText);
+            secondPassButton.setEnabled(false);
+            firstPassButton.setEnabled(true);
         }
     }
 
