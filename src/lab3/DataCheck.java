@@ -131,32 +131,73 @@ public class DataCheck {
         output[2] = OP1;
         output[3] = OP2;
 
-        if (checkDirective(mark) || checkRegisters(mark))
-            return false;
+        System.out.println("=== DEBUG checkRow ===");
+        System.out.println("mark='" + mark + "' OC='" + OC + "' OP1='" + OP1 + "' OP2='" + OP2 + "'");
 
-        if (numb > 0 && nameProg != null && nameProg.equals(mark.toUpperCase()))
-            return false;
+        if (OC.equalsIgnoreCase("EXTDEF") || OC.equalsIgnoreCase("EXTREF") ||
+                OC.equalsIgnoreCase("CSECT") || OC.equalsIgnoreCase("START") ||
+                OC.equalsIgnoreCase("END")) {
 
-        if((checkLettersAndNumbers(mark) || mark.isEmpty()) &&
-                checkLettersAndNumbers(OC) &&
-                (checkLettersAndNumbers(OP2) || OP2.isEmpty())) {
+            System.out.println("  Это директива: " + OC);
 
-            if (!mark.isEmpty()) {
-                if (checkLetters(Character.toString(mark.charAt(0))))
-                    return true;
-                else
-                    return false;
+            if ((OC.equalsIgnoreCase("EXTDEF") || OC.equalsIgnoreCase("EXTREF") ||
+                    OC.equalsIgnoreCase("END")) && !mark.isEmpty()) {
+                System.out.println("  ОШИБКА: метка не пустая для " + OC);
+                return false;
             }
 
+            if ((OC.equalsIgnoreCase("START") || OC.equalsIgnoreCase("CSECT")) &&
+                    mark.isEmpty()) {
+                System.out.println("  ОШИБКА: метка пустая для " + OC);
+                return false;
+            }
+
+            System.out.println("  Проверка директивы пройдена");
+        }
+
+        if (checkDirective(mark) || checkRegisters(mark)) {
+            System.out.println("  ОШИБКА: метка является директивой или регистром");
+            return false;
+        }
+
+        if (numb > 0 && nameProg != null && nameProg.equals(mark.toUpperCase())) {
+            System.out.println("  ОШИБКА: конфликт с именем программы");
+            return false;
+        }
+
+        boolean checkMain = (checkLettersAndNumbers(mark) || mark.isEmpty()) &&
+                checkLettersAndNumbers(OC) &&
+                (checkLettersAndNumbers(OP1) || OP1.isEmpty()) &&
+                (checkLettersAndNumbers(OP2) || OP2.isEmpty());
+
+        System.out.println("  Основная проверка: " + checkMain);
+        System.out.println("  mark check: " + (checkLettersAndNumbers(mark) || mark.isEmpty()));
+        System.out.println("  OC check: " + checkLettersAndNumbers(OC));
+        System.out.println("  OP1 check: " + (checkLettersAndNumbers(OP1) || OP1.isEmpty()));
+        System.out.println("  OP2 check: " + (checkLettersAndNumbers(OP2) || OP2.isEmpty()));
+
+        if (checkMain) {
+            if (!mark.isEmpty()) {
+                boolean firstCharCheck = checkLetters(Character.toString(mark.charAt(0)));
+                System.out.println("  Первый символ метки: " + firstCharCheck);
+                return firstCharCheck;
+            }
             return true;
         } else {
             return false;
         }
     }
 
-    public boolean checkExternalNames(List<List<String>> tt) {
-        for (int i = 0; i < tt.size(); i++) {
-            if (tt.get(1).get(i).isEmpty() && tt.get(3).get(i).equals("ВНИ")) return false;
+    public boolean checkExternalNames(List<List<String>> symbolTable, String currentSection) {
+        for (int i = 0; i < symbolTable.get(0).size(); i++) {
+            String section = symbolTable.get(2).get(i);
+            String type = symbolTable.get(3).get(i);
+            String address = symbolTable.get(1).get(i);
+
+            if (currentSection.equals(section) && "ВНИ".equals(type) && address.isEmpty()) {
+                System.out.println("Ошибка: EXTDEF '" + symbolTable.get(0).get(i) + "' в секции " + section + " не имеет адреса");
+                return false;
+            }
         }
         return true;
     }

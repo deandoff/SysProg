@@ -95,13 +95,21 @@ public class Core extends Pass {
             String OP1 = rowData[2];
             String OP2 = rowData[3];
 
-            if (!OC.equalsIgnoreCase("EXTDEF") && !OC.equalsIgnoreCase("EXTREF")) {
+            System.out.println("MAIN: Строка " + (i+1) + " -> mark='" + mark + "', OC='" + OC + "'");
+
+            if (!OC.equalsIgnoreCase("EXTDEF") && !OC.equalsIgnoreCase("EXTREF")
+                    && !OC.equalsIgnoreCase("CSECT") && !OC.equalsIgnoreCase("START")
+                    && !OC.equalsIgnoreCase("END")) {
+                // Проверка меток для обычных команд
                 String[] strchHolder = new String[]{""};
                 int markRow = -1;
                 if (!mark.isEmpty()) {
+                    System.out.println(">>> Проверка метки для OC='" + OC + "', mark='" + mark + "', currentSection='" + currentCsectName + "'");
                     markRow = findMarkInMarkTable(mark, strchHolder, currentCsectName);
+                    System.out.println(">>> Результат: markRow=" + markRow + ", strch='" + strchHolder[0] + "'");
                 }
                 String strch = strchHolder[0];
+
 
                 if ("Er".equals(strch)) {
                     errorText = "В строке " + (i + 1) + " ошибка. Метка уже существует: " + mark;
@@ -124,7 +132,8 @@ public class Core extends Pass {
                         addSymbolIfNotExists(mark, countAddress, currentCsectName, "");
                     }
                 }
-            } else {
+            } else if (OC.equalsIgnoreCase("EXTDEF") || OC.equalsIgnoreCase("EXTREF")) {
+                System.out.println("CHECK EXTDEF/EXTREF: mark='" + mark + "', OC='" + OC + "'");
                 if (!mark.isEmpty()) {
                     errorText = "В строке " + (i + 1) + " ошибка. Поле метки не используется для EXTDEF/EXTREF";
                     return false;
@@ -257,13 +266,6 @@ public class Core extends Pass {
                             System.out.println("Обработка CSECT: mark='" + mark + "', nameProg='" + nameProg + "'");
                             System.out.println("Текущие sectionNames: " + sectionNames);
 
-                            // ПРОВЕРКА ДУБЛИРОВАНИЯ ИМЕНИ - В САМОМ НАЧАЛЕ!
-                            if (sectionNames.contains(mark)) {
-                                System.out.println("ОШИБКА: Повторное имя секции: " + mark);
-                                System.out.println("Текущие sectionNames: " + sectionNames);
-                                errorText = "В строке " + (i + 1) + " ошибка. Повторное имя секции: " + mark;
-                                return false;
-                            }
 
                             // Проверка совпадения с именем START секции
                             if (mark.equals(nameProg)) {
@@ -274,13 +276,30 @@ public class Core extends Pass {
 
                             // ДОБАВЛЯЕМ В sectionNames СРАЗУ ПОСЛЕ ПРОВЕРОК
                             sectionNames.add(mark);
-                            System.out.println("CSECT: Добавлено имя '" + mark + "' в sectionNames");
+                            System.out.println("CSECT: Добавлено имя '" + mark + "' in sectionNames");
                             System.out.println("Текущие sectionNames: " + sectionNames);
 
                             endSection.add(Converter.convertToSixChars(Converter.convertDecToHex(countAddress)));
                             int oldAddressCount = countAddress;
-                            countAddress = 0;  // ← СБРОС ДЛЯ НОВОЙ СЕКЦИИ!
+                            countAddress = 0;
                             startAddress = countAddress;
+
+                            for (int j = 0; j < symbolTable.get(0).size(); j++) {
+                                String symName = symbolTable.get(0).get(j);
+                                String symAddr = symbolTable.get(1).get(j);
+                                String symCsect = symbolTable.get(2).get(j);
+                                String symFlag = symbolTable.get(3).get(j);
+
+                                if ("ВНИ".equals(symFlag) && currentCsectName.equals(symCsect) && symAddr.isEmpty()) {
+                                    errorText = "Ошибка! В секции " + currentCsectName +
+                                            " внешнее имя '" + symName + "' не имеет адреса";
+                                    return false;
+                                }
+                            }
+
+                            if (!mark.isEmpty()) {
+                                addSymbolIfNotExists(mark, countAddress, mark, ""); // Адрес = 0, секция = сама себя
+                            }
 
                             if (dC.checkLettersAndNumbers(OP1) || OP1.isEmpty()) {
 
@@ -303,13 +322,7 @@ public class Core extends Pass {
                                     return false;
                                 }
 
-                                for (String extName : externalDefNames) {
-                                    if (mark.equalsIgnoreCase(extName)) {
-                                        errorText = "В строке " + (i + 1) + " ошибка. Имя секции не может совпадать с внешним именем";
-                                        return false;
-                                    }
-                                }
-
+                                // ОСТАВЛЯЕМ только проверки на команды и директивы
                                 for (String[] strings : operationCode) {
                                     if (mark.equalsIgnoreCase(strings[0])) {
                                         errorText = "В строке " + (i + 1) + " ошибка. Имя секции не может совпадать с названием команды";
@@ -322,9 +335,8 @@ public class Core extends Pass {
                                     return false;
                                 }
 
-                                // ИСПРАВЛЕНИЕ: используем countAddress (который теперь = 0), а не oldAddressCount
                                 addToSupportTable(
-                                        Converter.convertToSixChars(Converter.convertDecToHex(countAddress)),  // ← countAddress = 000000
+                                        Converter.convertToSixChars(Converter.convertDecToHex(countAddress)),
                                         OC,
                                         mark,
                                         ""
@@ -343,6 +355,11 @@ public class Core extends Pass {
                                 errorText = "В строке " + (i + 1) + " ошибка. Неверный адрес начала программы";
                                 return false;
                             }
+                            rowData[0] = "";
+                            if (!dC.checkExternalNames(symbolTable, currentCsectName)) {
+                                errorText = "В секции " + currentCsectName + " найдено не определенное внешнее имя";
+                                return false;
+                            }
                             break;
                         }
 
@@ -351,6 +368,20 @@ public class Core extends Pass {
                                     || prevOC.equalsIgnoreCase("START") || prevOC.equalsIgnoreCase("CSECT")) {
 
                                 if (!OP1.isEmpty()) {
+
+                                    // ★★★★ ПРОВЕРКА ДУБЛИРОВАНИЯ EXTREF В ТЕКУЩЕЙ СЕКЦИИ ★★★★
+                                    for (int j = 0; j < symbolTable.get(0).size(); j++) {
+                                        String symName = symbolTable.get(0).get(j);
+                                        String symCsect = symbolTable.get(2).size() > j ? symbolTable.get(2).get(j) : "";
+                                        String symFlag = symbolTable.get(3).size() > j ? symbolTable.get(3).get(j) : "";
+
+                                        if (OP1.equalsIgnoreCase(symName) &&
+                                                currentCsectName.equalsIgnoreCase(symCsect) &&
+                                                "ВНС".equals(symFlag)) {
+                                            errorText = "В строке " + (i + 1) + " ошибка. Повторное объявление внешней ссылки '" + OP1 + "' в секции '" + currentCsectName + "'";
+                                            return false;
+                                        }
+                                    }
 
                                     if (!dC.checkLettersAndNumbers(OP1)) {
                                         errorText = "В строке " + (i + 1) + " ошибка. Недопустимые символы в операнде";
@@ -393,13 +424,13 @@ public class Core extends Pass {
                                     for (int j = 0; j < symbolTable.get(0).size(); j++) {
                                         String symCsect = symbolTable.get(2).size() > j ? symbolTable.get(2).get(j) : "";
                                         String symName  = symbolTable.get(0).size() > j ? symbolTable.get(0).get(j) : "";
+                                        String symFlag  = symbolTable.get(3).size() > j ? symbolTable.get(3).get(j) : "";
 
-                                        if (nameProg.equalsIgnoreCase(symCsect) && OP1.equalsIgnoreCase(symName)) {
+                                        if (nameProg.equalsIgnoreCase(symCsect) && OP1.equalsIgnoreCase(symName) && "ВНИ".equals(symFlag)) {
                                             errorText = "В строке " + (i + 1) + " ошибка. Имя внешней ссылки не может совпадать с внешним именем в одной секции";
                                             return false;
                                         }
                                     }
-
 
                                     addToSymbolTable(OP1, "", nameProg.toUpperCase(), "ВНС");
                                     addToSupportTable(mark, OC, OP1, "");
@@ -429,6 +460,20 @@ public class Core extends Pass {
 
                                 if (!OP1.isEmpty()) {
 
+                                    // ★★★★ ПРОВЕРКА ДУБЛИРОВАНИЯ EXTDEF В ТЕКУЩЕЙ СЕКЦИИ ★★★★
+                                    for (int j = 0; j < symbolTable.get(0).size(); j++) {
+                                        String symName = symbolTable.get(0).get(j);
+                                        String symCsect = symbolTable.get(2).size() > j ? symbolTable.get(2).get(j) : "";
+                                        String symFlag = symbolTable.get(3).size() > j ? symbolTable.get(3).get(j) : "";
+
+                                        if (OP1.equalsIgnoreCase(symName) &&
+                                                currentCsectName.equalsIgnoreCase(symCsect) &&
+                                                "ВНИ".equals(symFlag)) {
+                                            errorText = "В строке " + (i + 1) + " ошибка. Повторное объявление внешнего имени '" + OP1 + "' в секции '" + currentCsectName + "'";
+                                            return false;
+                                        }
+                                    }
+
                                     if (!dC.checkLettersAndNumbers(OP1)) {
                                         errorText = "В строке " + (i + 1) + " ошибка. Недопустимые символы в операнде";
                                         return false;
@@ -456,6 +501,18 @@ public class Core extends Pass {
                                     for (String section : sectionNames) {
                                         if (section.equals(OP1)) {
                                             errorText = "В строке " + (i + 1) + " ошибка. Имя внешней ссылки совпадает с именем секции";
+                                            return false;
+                                        }
+                                    }
+
+                                    // ★★★★ ПРОВЕРКА СОВПАДЕНИЯ С EXTREF В ТЕКУЩЕЙ СЕКЦИИ ★★★★
+                                    for (int j = 0; j < symbolTable.get(0).size(); j++) {
+                                        String symName = symbolTable.get(0).get(j);
+                                        String symCsect = symbolTable.get(2).size() > j ? symbolTable.get(2).get(j) : "";
+                                        String symFlag = symbolTable.get(3).size() > j ? symbolTable.get(3).get(j) : "";
+
+                                        if (nameProg.equalsIgnoreCase(symCsect) && OP1.equalsIgnoreCase(symName) && "ВНС".equals(symFlag)) {
+                                            errorText = "В строке " + (i + 1) + " ошибка. Имя внешнего определения не может совпадать с внешней ссылкой в одной секции";
                                             return false;
                                         }
                                     }
@@ -620,6 +677,25 @@ public class Core extends Pass {
                             if (flagStart && !flagEnd) {
                                 flagEnd = true;
                                 endSection.add(Converter.convertToSixChars(Converter.convertDecToHex(countAddress)));
+
+                                for (int j = 0; j < symbolTable.get(0).size(); j++) {
+                                    String symName = symbolTable.get(0).get(j);
+                                    String symAddr = symbolTable.get(1).get(j);
+                                    String symCsect = symbolTable.get(2).get(j);
+                                    String symFlag = symbolTable.get(3).get(j);
+
+                                    if ("ВНИ".equals(symFlag) && currentCsectName.equals(symCsect) && symAddr.isEmpty()) {
+                                        errorText = "В секции " + currentCsectName +
+                                                " внешнее имя '" + symName + "' не имеет адреса";
+                                        return false;
+                                    }
+                                }
+
+                                if (!dC.checkExternalNames(symbolTable, currentCsectName)) {
+                                    errorText = "В секции " + currentCsectName + " найдено не определенное внешнее имя";
+                                    return false;
+                                }
+
                                 if (OP1.length() == 0) {
                                     endAddress = startAddress;
                                     addToSupportTable(Converter.convertToSixChars(Converter.convertDecToHex(countAddress)), OC, "0", "");
@@ -713,10 +789,6 @@ public class Core extends Pass {
                 }
 
             }
-        }
-        if (!dC.checkExternalNames(symbolTable)) {
-            errorText = "Найдено не определенное внешнее имя";
-            return false;
         }
 
         if (!flagEnd) {
@@ -865,7 +937,7 @@ public class Core extends Pass {
                 String res = checkOP(OP1, error1, flagMark1, tuneAddress1, i, currentCSECTName);
 
                 if (error1[0]) {
-                    errorText = "В строке " + (i + 1) + " ошибка. Ошибка1 при вычислении операндной части.";
+                    errorText = "В строке " + (i + 1) + " ошибка. Ошибка при вычислении операндной части.";
                     BC.setText("");
                     return false;
                 }
@@ -875,7 +947,7 @@ public class Core extends Pass {
                 String ress = checkOP(OP2, error2, flagMark2, tuneAddress2, i, currentCSECTName);
 
                 if (error2[0]) {
-                    errorText = "В строке " + (i + 1) + " ошибка. Ошибка2 при вычислении операндной части.";
+                    errorText = "В строке " + (i + 1) + " ошибка. Ошибка при вычислении операндной части.";
                     BC.setText("");
                     return false;
                 }
@@ -1160,9 +1232,5 @@ public class Core extends Pass {
                 upper.equals("R11") || upper.equals("R12") || upper.equals("R13") ||
                 upper.equals("R14") || upper.equals("R15");
     }
-
-
-
-
 
 }

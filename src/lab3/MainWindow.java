@@ -32,7 +32,7 @@ public class MainWindow extends JFrame {
 
         setTitle("Двухпросмотровый ассемблер для программ в полноперемещаемом формате");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-        setSize(1050, 750);
+        setSize(1350, 750);
         setLayout(null);
         setResizable(false);
 
@@ -68,7 +68,7 @@ public class MainWindow extends JFrame {
         add(group1);
 
         JPanel group2 = new JPanel(null);
-        group2.setBounds(350, 10, 330, 610);
+        group2.setBounds(350, 10, 630, 610);
 
         JLabel label3 = new JLabel("Вспомогательная панель");
         label3.setBounds(80, 10, 200, 20);
@@ -76,25 +76,25 @@ public class MainWindow extends JFrame {
 
         supportTable = new JTable(new DefaultTableModel(new String[]{"Адрес", "Команда", "Операнд1", "Операнд2"}, 0));
         JScrollPane scrollSupport = new JScrollPane(supportTable);
-        scrollSupport.setBounds(5, 35, 315, 200);
+        scrollSupport.setBounds(5, 35, 615, 200);
         group2.add(scrollSupport);
 
         JLabel labelSupport = new JLabel("Вспомогательная таблица");
-        labelSupport.setBounds(80, 240, 200, 20);
+        labelSupport.setBounds(280, 240, 200, 20);
         group2.add(labelSupport);
 
         symbolTable = new JTable(new DefaultTableModel(new String[]{"Имя", "Адрес", "Секция", "Тип"}, 0));
         JScrollPane scrollSym = new JScrollPane(symbolTable);
-        scrollSym.setBounds(5, 270, 165, 150);
+        scrollSym.setBounds(5, 270, 335, 150);
         group2.add(scrollSym);
 
         JLabel labelSym = new JLabel("Символические имена");
-        labelSym.setBounds(5, 430, 180, 20);
+        labelSym.setBounds(350, 430, 180, 20);
         group2.add(labelSym);
 
         settingTable = new JTable(new DefaultTableModel(new String[]{"Адрес", "Метка"}, 0));
         JScrollPane scrollSetting = new JScrollPane(settingTable);
-        scrollSetting.setBounds(200, 270, 120, 150);
+        scrollSetting.setBounds(350, 270, 270, 150);
         group2.add(scrollSetting);
 
         JLabel labelSetting = new JLabel("Таблица настроек");
@@ -104,38 +104,38 @@ public class MainWindow extends JFrame {
         firstPassErrorTextBox = new JTextArea();
         firstPassErrorTextBox.setEditable(false);
         JScrollPane scrollErr1 = new JScrollPane(firstPassErrorTextBox);
-        scrollErr1.setBounds(5, 460, 315, 90);
+        scrollErr1.setBounds(180, 460, 315, 90);
         group2.add(scrollErr1);
 
         JLabel labelErr1 = new JLabel("Ошибки первого прохода");
-        labelErr1.setBounds(80, 555, 200, 20);
+        labelErr1.setBounds(240, 555, 200, 20);
         group2.add(labelErr1);
 
         add(group2);
 
 
         JPanel group3 = new JPanel(null);
-        group3.setBounds(690, 10, 330, 610);
+        group3.setBounds(690, 10, 630, 610);
 
         JLabel label8 = new JLabel("Двоичный код");
-        label8.setBounds(120, 10, 150, 20);
+        label8.setBounds(430, 10, 150, 20);
         group3.add(label8);
 
         binaryCodeTextBox = new JTextArea();
         binaryCodeTextBox.setEditable(false);
         binaryCodeTextBox.setFont(new Font("Consolas", Font.PLAIN, 14));
         JScrollPane scrollBin = new JScrollPane(binaryCodeTextBox);
-        scrollBin.setBounds(5, 35, 315, 440);
+        scrollBin.setBounds(305, 35, 315, 440);
         group3.add(scrollBin);
 
         JLabel label6 = new JLabel("Ошибки второго прохода");
-        label6.setBounds(80, 485, 200, 20);
+        label6.setBounds(380, 485, 200, 20);
         group3.add(label6);
 
         secondPassErrorTextBox = new JTextArea();
         secondPassErrorTextBox.setEditable(false);
         JScrollPane scrollErr2 = new JScrollPane(secondPassErrorTextBox);
-        scrollErr2.setBounds(5, 510, 315, 90);
+        scrollErr2.setBounds(305, 510, 315, 90);
         group3.add(scrollErr2);
 
         add(group3);
@@ -157,11 +157,11 @@ public class MainWindow extends JFrame {
         setVisible(true);
 
         JLabel labelAddressing = new JLabel("Тип адресации:");
-        labelAddressing.setBounds(700, 640, 120, 20);
+        labelAddressing.setBounds(1000, 640, 120, 20);
         add(labelAddressing);
 
         addressingModeComboBox = new JComboBox<>(new String[]{"Прямая", "Относительная", "Смешанная"});
-        addressingModeComboBox.setBounds(800, 640, 200, 25);
+        addressingModeComboBox.setBounds(1100, 640, 200, 25);
         addressingModeComboBox.addActionListener(e -> {
             typeAdr = addressingModeComboBox.getSelectedIndex();
         });
