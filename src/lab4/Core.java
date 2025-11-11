@@ -430,7 +430,7 @@ public class Core extends Pass {
 
                                     int[] num = new int[1];
                                     if (!dC.checkEmptyAddress(symbolTable, num)) {
-                                        errorText = "В строке " + (i + 1) + " ошибка. Найдено неопределенное внешнее имя " + symbolTable.get(0).get(num[0]);
+                                        errorText = "Ошибка. Найдено неопределенное внешнее имя " + symbolTable.get(0).get(num[0]);
                                         return false;
                                     }
 
