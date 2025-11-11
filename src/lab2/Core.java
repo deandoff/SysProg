@@ -603,38 +603,19 @@ public class Core extends Pass {
             if (dC.checkDirective(OC)) {
                 switch (OC) {
                     case "RESB":
-                        BC.append(Converter.convertToBinaryCode(
-                                address,
-                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
-                                res, "", "") + "\r\n");
+                        BC.setText(BC.getText() + lab1.Converter.convertToBinaryCode(address, "", res, "", "") + "\r\n");
                         continue;
 
                     case "RESW":
-                        BC.append(Converter.convertToBinaryCode(
-                                address,
-                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
-                                Converter.convertToTwoChars(
-                                        Converter.convertDecToHex(Integer.parseInt(OP1) * 3)),
-                                "", "") + "\r\n");
+                        BC.setText(BC.getText() + lab1.Converter.convertToBinaryCode(address, "", lab1.Converter.convertToTwoChars(lab1.Converter.convertDecToHex(Integer.parseInt(OP1) * 3)), "", "") + "\r\n");
                         continue;
 
                     case "BYTE":
-                        BC.append(Converter.convertToBinaryCode(
-                                address,
-                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
-                                Converter.convertToTwoChars(
-                                        Converter.convertDecToHex(res.length() + ress.length())),
-                                res, ress) + "\r\n");
+                        BC.setText(BC.getText() + lab1.Converter.convertToBinaryCode(address, "", lab1.Converter.convertToTwoChars(lab1.Converter.convertDecToHex(res.length() + ress.length())), res, ress) + "\r\n");
                         continue;
 
                     case "WORD":
-                        BC.append(Converter.convertToBinaryCode(
-                                address,
-                                Converter.convertToTwoChars(Converter.convertDecToHex(finalOpcode)),
-                                Converter.convertToTwoChars(
-                                        Converter.convertDecToHex(
-                                                Converter.convertToSixChars(res).length() + ress.length())),
-                                Converter.convertToSixChars(res), ress) + "\r\n");
+                        BC.setText(BC.getText() + lab1.Converter.convertToBinaryCode(address, "", lab1.Converter.convertToTwoChars(lab1.Converter.convertDecToHex(lab1.Converter.convertToSixChars(res).length() + ress.length())), lab1.Converter.convertToSixChars(res), ress) + "\r\n");
                         continue;
                 }
             }
@@ -689,7 +670,6 @@ public class Core extends Pass {
 
         return true;
     }
-
 
 
     public String checkOP(String OP, boolean[] outFlags, String[] outAddress, int ind) {

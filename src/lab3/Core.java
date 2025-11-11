@@ -368,8 +368,6 @@ public class Core extends Pass {
                                     || prevOC.equalsIgnoreCase("START") || prevOC.equalsIgnoreCase("CSECT")) {
 
                                 if (!OP1.isEmpty()) {
-
-                                    // ★★★★ ПРОВЕРКА ДУБЛИРОВАНИЯ EXTREF В ТЕКУЩЕЙ СЕКЦИИ ★★★★
                                     for (int j = 0; j < symbolTable.get(0).size(); j++) {
                                         String symName = symbolTable.get(0).get(j);
                                         String symCsect = symbolTable.get(2).size() > j ? symbolTable.get(2).get(j) : "";
@@ -689,6 +687,12 @@ public class Core extends Pass {
                                                 " внешнее имя '" + symName + "' не имеет адреса";
                                         return false;
                                     }
+
+                                    if ("ВНИ".equals(symFlag) && currentCsectName.equals(symCsect) && symAddr.isEmpty()) {
+                                        errorText = "В секции " + currentCsectName +
+                                                " внешнее имя '" + symName + "' не имеет адреса";
+                                        return false;
+                                    }
                                 }
 
                                 if (!dC.checkExternalNames(symbolTable, currentCsectName)) {
@@ -952,6 +956,11 @@ public class Core extends Pass {
                     return false;
                 }
                 settingTable(tuneAddress2[0], currentCSECTName, settingTable);
+
+                if (!isRegister(OP1) && !isRegister(OP2)) {
+                    if (res != null && !res.isEmpty()) res = padHexEven(res);
+                    if (ress != null && !ress.isEmpty()) ress = padHexEven(ress);
+                }
 
                 if (res != null) res = padHexEven(res);
                 if (ress != null) ress = padHexEven(ress);
