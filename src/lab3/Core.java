@@ -711,6 +711,11 @@ public class Core extends Pass {
                                             break;
                                         } else {
                                             errorText = "В строке " + (i + 1) + " ошибка. Неверный адрес входа в программу.";
+                                            errorText += startAddress;
+                                            errorText += '\n';
+                                            errorText += countAddress;
+                                            errorText += '\n';
+                                            errorText += endAddress;
                                             return false;
                                         }
                                     } else {
