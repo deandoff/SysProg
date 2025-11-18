@@ -61,7 +61,7 @@ public class Pass {
     public int findMarkInMarkTable(String mark, String[] addressName, String[] addressTune) {
         if (!symbolTable.isEmpty()) {
             for (int i = 0; i < symbolTable.get(0).size(); i++) {
-                if (symbolTable.get(0).get(i).toUpperCase().equals(mark)) {
+                if (symbolTable.get(0).get(i).toUpperCase().equals(mark.toUpperCase())) {
                     addressName[0] = symbolTable.get(1).get(i);
                     addressTune[0] = symbolTable.get(2).get(i);
                     return i;

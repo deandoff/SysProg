@@ -116,10 +116,10 @@ public class Core extends Pass {
             return false;
         }
 
-        String mark = output[0];
-        String OC = output[1];
-        String OP1 = output[2];
-        String OP2 = output[3];
+        String mark = output[0].toUpperCase();
+        String OC = output[1].toUpperCase();
+        String OP1 = output[2].toUpperCase();
+        String OP2 = output[3].toUpperCase();
 
         for (int j = 0; j < operationCode.length; j++) {
             if (mark.toUpperCase().equals(operationCode[j][0].toUpperCase())) {
@@ -546,13 +546,13 @@ public class Core extends Pass {
 
                             if (OP1.length() > 0) {
                                 if (OP1.charAt(0) == '[' && OP1.charAt(OP1.length() - 1) == ']') {
-                                    errorText = "Относительная адресация недопустима";
+                                    errorText = "В строке " + (i + 1) + " ошибка. Относительная адресация недопустима";
                                     return false;
                                 } else {
                                     if (dC.checkLettersAndNumbers(OP1) && dC.checkLetters(Character.toString(OP1.charAt(0)))) {
                                         // OK
                                     } else {
-                                        errorText = "Ошибка в символическом имени";
+                                        errorText = "В строке " + (i + 1) + " ошибка. Для данного типа адресации операнд должен быть меткой";
                                         return false;
                                     }
 

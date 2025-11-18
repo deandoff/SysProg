@@ -50,8 +50,6 @@ public class MainWindow extends JFrame {
     // Данные
     private String[][] operationCodeArray;
     private String[][] sourceCodeArray;
-    private Set<String> existingNames = new HashSet<>();
-    private Set<Integer> existingCodes = new HashSet<>();
 
     public MainWindow() {
         setLookAndFeel();
